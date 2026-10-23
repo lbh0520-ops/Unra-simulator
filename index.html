@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국 전통 악기 - 운라(雲鑼) 체험</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for Sound Synthesis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #1a1614;
+            color: #e5e0d8;
+        }
+        .title-font {
+            font-family: 'Gowun Batang', serif;
+        }
+        
+        /* 나무 프레임 텍스처 스타일 */
+        .wood-frame {
+            background: linear-gradient(135deg, #4a2c11 0%, #2b180a 50%, #1c0e05 100%);
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 10px 25px rgba(0,0,0,0.5);
+            border: 4px solid #633c19;
+        }
+
+        /* 놋쇠 나(鑼) - Gong 스타일 */
+        .gong-plate {
+            background: radial-gradient(circle at 35% 35%, #ffeaa7 0%, #d4af37 45%, #aa7c11 80%, #5c4308 100%);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.6), inset 0 -4px 6px rgba(0,0,0,0.4);
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+        }
+
+        .gong-plate:active, .gong-plate.active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.8);
+            filter: brightness(1.15);
+        }
+
+        /* 채(Mallet) 커서 매핑 */
+        .custom-cursor {
+            cursor: pointer;
+        }
+
+        /* 전통 오방색 포인트 */
+        .decoration-red { color: #c0392b; }
+        .decoration-gold { color: #d4af37; }
+
+        /* 파동 애니메이션 */
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+        .ripple-effect {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid #fff3a8;
+            animation: ripple 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 md:p-8 select-none">
+
+    <!-- 헤더 영역 -->
+    <header class="text-center mb-6">
+        <h1 class="text-3xl md:text-5xl font-bold title-font decoration-gold tracking-wide mb-2">
+            <i class="fa-solid fa-bell mr-2"></i>운라 (雲鑼)
+        </h1>
+        <p class="text-sm md:text-base text-stone-400 font-light max-w-xl mx-auto">
+            운라는 구름 모양의 거치대에 10개의 작은 놋쇠 접시(나)를 달아놓고 소채로 쳐서 소리를 내는 한국 전통 타악기입니다.
+        </p>
+    </header>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="flex-grow flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
+        
+        <!-- 컨트롤 바 -->
+        <div class="w-full bg-stone-900/80 backdrop-blur border border-stone-800 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+            
+            <!-- 채 종류 선택 -->
+            <div class="flex items-center gap-3">
+                <span class="text-xs md:text-sm font-semibold text-stone-300"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>채 음색:</span>
+                <div class="inline-flex rounded-lg bg-stone-800 p-1 border border-stone-700">
+                    <button id="malletHard" onclick="setMalletType('hard')" class="px-3 py-1 text-xs md:text-sm rounded-md bg-amber-600 text-white font-medium transition">단단한 채 (맑은 음)</button>
+                    <button id="malletSoft" onclick="setMalletType('soft')" class="px-3 py-1 text-xs md:text-sm rounded-md text-stone-400 hover:text-white font-medium transition">부드러운 채 (지그시)</button>
+                </div>
+            </div>
+
+            <!-- 미디 및 녹음/시범 연주 -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <button id="recordBtn" onclick="toggleRecord()" class="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-red-900/50 border border-stone-700 text-stone-200 text-xs md:text-sm flex items-center gap-1.5 transition">
+                    <span id="recordDot" class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                    <span id="recordText">녹음 시작</span>
+                </button>
+                
+                <button id="playRecBtn" onclick="playRecord()" disabled class="px-3 py-1.5 rounded-lg bg-stone-800 border border-stone-700 text-stone-500 text-xs md:text-sm flex items-center gap-1.5 transition cursor-not-allowed">
+                    <i class="fa-solid fa-play text-xs"></i> 녹음 재생
+                </button>
+
+                <button onclick="playIeodoSana()" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs md:text-sm flex items-center gap-1.5 transition shadow-md">
+                    <i class="fa-solid fa-music"></i> 이어도사나 연주
+                </button>
+            </div>
+        </div>
+
+        <!-- 이어도사나 악보 가이드 세션 -->
+        <div class="w-full bg-stone-900/90 border border-amber-900/40 rounded-xl p-4 mb-6 shadow-xl">
+            <h2 class="text-amber-400 text-base md:text-lg font-bold mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-book-open"></i> 악보 가이드: 이어도사나 (제주 민요)
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs md:text-sm">
+                <!-- 메기는 소리 1 -->
+                <div class="bg-emerald-950/40 border border-emerald-800/40 p-2.5 rounded-lg flex justify-between items-center">
+                    <div>
+                        <span class="bg-emerald-700 text-white text-[10px] px-1.5 py-0.5 rounded mr-1.5">메기는 소리</span>
+                        <span class="font-bold text-stone-200">이 어 사 나 (아 아)</span>
+                    </div>
+                    <div class="text-amber-300 font-mono text-xs">
+                        <span class="bg-stone-800 px-1 py-0.5 rounded border border-stone-700">浹(청중)</span> → 
+                        <span class="bg-stone-800 px-1 py-0.5 rounded border border-stone-700">汰(청태)</span>
+                    </div>
+                </div>
+
+                <!-- 받는 소리 1 -->
+                <div class="bg-sky-950/40 border border-sky-800/40 p-2.5 rounded-lg flex justify-between items-center">
+                    <div>
+                        <span class="bg-sky-700 text-white text-[10px] px-1.5 py-0.5 rounded mr-1.5">받는 소리</span>
+                        <span class="font-bold text-stone-200">이 어 사 나</span>
+                    </div>
+                    <div class="text-amber-300 font-mono text-xs">
+                        <span class="bg-stone-800 px-1 py-0.5 rounded border border-stone-700">潢(청황)</span>
+                    </div>
+                </div>
+
+                <!-- 메기는 소리 2 -->
+                <div class="bg-emerald-950/40 border border-emerald-800/40 p-2.5 rounded-lg flex justify-between items-center">
+                    <div>
+                        <span class="bg-emerald-700 text-white text-[10px] px-1.5 py-0.5 rounded mr-1.5">메기는 소리</span>
+                        <span class="font-bold text-stone-200">이 어 도 사 나</span>
+                    </div>
+                    <div class="text-amber-300 font-mono text-xs">
+                        <span class="bg-stone-800 px-1 py-0.5 rounded border border-stone-700">南(남)</span>
+                    </div>
+                </div>
+
+                <!-- 받는 소리 2 -->
+                <div class="bg-sky-950/40 border border-sky-800/40 p-2.5 rounded-lg flex justify-between items-center">
+                    <div>
+                        <span class="bg-sky-700 text-white text-[10px] px-1.5 py-0.5 rounded mr-1.5">받는 소리</span>
+                        <span class="font-bold text-stone-200">이 어 도 사 나</span>
+                    </div>
+                    <div class="text-amber-300 font-mono text-xs">
+                        <span class="bg-stone-800 px-1 py-0.5 rounded border border-stone-700">南(남)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 운라 틀 및 놋쇠 나 배치 -->
+        <!-- 전통 10개 구성: 맨 위 1개, 그 아래 3단 각 3개씩 (1 + 3 + 3 + 3 = 10개) -->
+        <div class="relative w-full max-w-2xl wood-frame rounded-2xl p-6 md:p-10 flex flex-col items-center gap-6 md:gap-8 my-auto">
+            
+            <!-- 상단 단청/문양 장식 오버레이 -->
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 text-xs text-amber-600/60 font-serif tracking-widest uppercase">
+                Traditional Unra Frame
+            </div>
+
+            <!-- 1단 (최상단 1개 - 가장 높은 음) -->
+            <div class="flex justify-center w-full">
+                <div id="gong-9" onclick="playGong(9)" class="gong-container relative flex items-center justify-center">
+                    <!-- 놋쇠 원반 -->
+                    <div class="gong-plate w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs md:text-sm text-red-950 font-bold opacity-90">潢</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">청황</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2단 (3개) -->
+            <div class="flex justify-around w-full max-w-lg">
+                <!-- Gong 6 -->
+                <div id="gong-6" onclick="playGong(6)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-18 h-18 md:w-22 md:h-22 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">林</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">임종</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 7</span>
+                    </div>
+                </div>
+                <!-- Gong 7 -->
+                <div id="gong-7" onclick="playGong(7)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-18 h-18 md:w-22 md:h-22 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">南</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">남려</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 8</span>
+                    </div>
+                </div>
+                <!-- Gong 8 -->
+                <div id="gong-8" onclick="playGong(8)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-18 h-18 md:w-22 md:h-22 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">無</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">무역</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 9</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3단 (3개) -->
+            <div class="flex justify-around w-full max-w-xl">
+                <!-- Gong 3 -->
+                <div id="gong-3" onclick="playGong(3)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">汰</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">청태</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 4</span>
+                    </div>
+                </div>
+                <!-- Gong 4 -->
+                <div id="gong-4" onclick="playGong(4)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">夾</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">협종</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 5</span>
+                    </div>
+                </div>
+                <!-- Gong 5 -->
+                <div id="gong-5" onclick="playGong(5)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">浹</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">청중</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 6</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4단 (최하단 3개 - 낮은 음) -->
+            <div class="flex justify-around w-full max-w-2xl">
+                <!-- Gong 0 -->
+                <div id="gong-0" onclick="playGong(0)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-22 h-22 md:w-26 md:h-26 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">黃</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">황종</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 1</span>
+                    </div>
+                </div>
+                <!-- Gong 1 -->
+                <div id="gong-1" onclick="playGong(1)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-22 h-22 md:w-26 md:h-26 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">大</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">대려</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 2</span>
+                    </div>
+                </div>
+                <!-- Gong 2 -->
+                <div id="gong-2" onclick="playGong(2)" class="gong-container relative flex items-center justify-center">
+                    <div class="gong-plate w-22 h-22 md:w-26 md:h-26 rounded-full flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                        <span class="text-xs text-red-950 font-bold opacity-90">太</span>
+                        <span class="text-base md:text-lg font-black text-stone-900">태주</span>
+                        <span class="text-[10px] bg-stone-900/20 text-stone-900 font-mono px-1.5 rounded mt-0.5">Key 3</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 받침대 다리 시각 효과 -->
+            <div class="w-16 h-8 bg-stone-900 border-x-2 border-stone-700 -mb-10 rounded-b"></div>
+        </div>
+
+        <!-- 가이드 안내 -->
+        <div class="mt-8 text-center text-xs md:text-sm text-stone-400">
+            <p><i class="fa-solid fa-keyboard mr-1"></i> 키보드 숫자키 <span class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-amber-400">1</span> ~ <span class="bg-stone-800 border border-stone-700 px-1.5 py-0.5 rounded text-amber-400">0</span> 을 눌러 연주할 수도 있습니다.</p>
+        </div>
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="mt-8 text-center text-xs text-stone-600">
+        <p>운라(雲鑼) 웹 가상 악기 | Web Audio Synthesis using Tone.js</p>
+    </footer>
+
+    <!-- 자바스크립트 로직 -->
+    <script>
+        // 운라 10개 음고 구성 (율명 및 한자 명확화)
+        const gongs = [
+            { id: 0, key: '1', note: 'C5',  yul: '황종', name: '黃 (황)' },
+            { id: 1, key: '2', note: 'C#5', yul: '대려', name: '大 (대)' },
+            { id: 2, key: '3', note: 'D5',  yul: '태주', name: '太 (태)' },
+            { id: 3, key: '4', note: 'E5',  yul: '청태', name: '汰 (청태)' },
+            { id: 4, key: '5', note: 'F5',  yul: '협종', name: '夾 (협)' },
+            { id: 5, key: '6', note: 'F#5', yul: '청중', name: '浹 (청중)' },
+            { id: 6, key: '7', note: 'G#5', yul: '임종', name: '林 (임)' },
+            { id: 7, key: '8', note: 'A5',  yul: '남려', name: '南 (남)' },
+            { id: 8, key: '9', note: 'A#5', yul: '무역', name: '無 (무)' },
+            { id: 9, key: '0', note: 'C6',  yul: '청황', name: '潢 (청황)' }
+        ];
+
+        // 키 매핑 객체
+        const keyMap = {};
+        gongs.forEach(g => keyMap[g.key] = g.id);
+
+        // 오디오 합성 엔진 (FM Synth로 놋쇠의 금속 배음 재현)
+        let synth = null;
+        let reverb = null;
+        let malletType = 'hard';
+
+        // 오디오 초기화 (사용자 첫 상호작용 시 실행)
+        function initAudio() {
+            if (synth) return;
+
+            Tone.start();
+
+            // 리버브 (공명 효과)
+            reverb = new Tone.Reverb({
+                decay: 2.5,
+                wet: 0.3
+            }).toDestination();
+
+            // FM Synth 생성 (금속성 타악기 소리)
+            synth = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 3.01,
+                modulationIndex: 14,
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 0.002,
+                    decay: 1.8,
+                    sustain: 0.01,
+                    release: 1.2
+                },
+                modulation: { type: "square" },
+                modulationEnvelope: {
+                    attack: 0.002,
+                    decay: 0.2,
+                    sustain: 0,
+                    release: 0.2
+                }
+            }).connect(reverb);
+
+            synth.volume.value = -6;
+        }
+
+        // 채 타입 변경
+        function setMalletType(type) {
+            malletType = type;
+            const hardBtn = document.getElementById('malletHard');
+            const softBtn = document.getElementById('malletSoft');
+
+            if (type === 'hard') {
+                hardBtn.className = "px-3 py-1 text-xs md:text-sm rounded-md bg-amber-600 text-white font-medium transition";
+                softBtn.className = "px-3 py-1 text-xs md:text-sm rounded-md text-stone-400 hover:text-white font-medium transition";
+                if(synth) {
+                    synth.set({
+                        modulationIndex: 14,
+                        envelope: { attack: 0.002, decay: 1.8 }
+                    });
+                }
+            } else {
+                softBtn.className = "px-3 py-1 text-xs md:text-sm rounded-md bg-amber-600 text-white font-medium transition";
+                hardBtn.className = "px-3 py-1 text-xs md:text-sm rounded-md text-stone-400 hover:text-white font-medium transition";
+                if(synth) {
+                    synth.set({
+                        modulationIndex: 5,
+                        envelope: { attack: 0.02, decay: 2.2 }
+                    });
+                }
+            }
+        }
+
+        // 운라 타격 연주 함수
+        function playGong(id) {
+            initAudio();
+
+            const gong = gongs[id];
+            if (!gong) return;
+
+            // 소리 재생
+            synth.triggerAttackRelease(gong.note, "2n");
+
+            // 시각적 피드백
+            const el = document.getElementById(`gong-${id}`);
+            if (el) {
+                const plate = el.querySelector('.gong-plate');
+                plate.classList.add('active');
+                setTimeout(() => plate.classList.remove('active'), 150);
+
+                // 파동 시각 효과 생성
+                createRipple(el);
+            }
+
+            // 녹음 모드일 때 기록
+            if (isRecording) {
+                recordedNotes.push({
+                    id: id,
+                    time: Date.now() - recordStartTime
+                });
+            }
+        }
+
+        // 파동 이펙트
+        function createRipple(container) {
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple-effect w-20 h-20 md:w-24 md:h-24';
+            container.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 500);
+        }
+
+        // 키보드 이벤트 리스너
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            const gongId = keyMap[e.key];
+            if (gongId !== undefined) {
+                playGong(gongId);
+            }
+        });
+
+        // --- 녹음 & 재생 기능 ---
+        let isRecording = false;
+        let recordStartTime = 0;
+        let recordedNotes = [];
+
+        function toggleRecord() {
+            initAudio();
+            const recordBtn = document.getElementById('recordBtn');
+            const recordText = document.getElementById('recordText');
+            const recordDot = document.getElementById('recordDot');
+            const playRecBtn = document.getElementById('playRecBtn');
+
+            if (!isRecording) {
+                // 녹음 시작
+                isRecording = true;
+                recordedNotes = [];
+                recordStartTime = Date.now();
+                
+                recordText.innerText = "녹음 중지";
+                recordDot.classList.add('animate-ping');
+                playRecBtn.disabled = true;
+                playRecBtn.className = "px-3 py-1.5 rounded-lg bg-stone-800 border border-stone-700 text-stone-500 text-xs md:text-sm flex items-center gap-1.5 transition cursor-not-allowed";
+            } else {
+                // 녹음 중지
+                isRecording = false;
+                recordText.innerText = "녹음 시작";
+                recordDot.classList.remove('animate-ping');
+
+                if (recordedNotes.length > 0) {
+                    playRecBtn.disabled = false;
+                    playRecBtn.className = "px-3 py-1.5 rounded-lg bg-emerald-800/50 hover:bg-emerald-700/60 border border-emerald-600 text-emerald-200 text-xs md:text-sm flex items-center gap-1.5 transition cursor-pointer";
+                }
+            }
+        }
+
+        function playRecord() {
+            if (recordedNotes.length === 0) return;
+            initAudio();
+
+            recordedNotes.forEach(item => {
+                setTimeout(() => {
+                    playGong(item.id);
+                }, item.time);
+            });
+        }
+
+        // --- 시범 연주 (전통 가락 오마주) ---
+        function playDemo() {
+            initAudio();
+            
+            // 데모 멜로디 시퀀스 (노트 ID와 시차ms)
+            const demoMelody = [
+                { id: 0, delay: 0 },
+                { id: 2, delay: 400 },
+                { id: 3, delay: 800 },
+                { id: 5, delay: 1200 },
+                { id: 7, delay: 1600 },
+                { id: 7, delay: 2200 },
+                { id: 9, delay: 2800 },
+                { id: 7, delay: 3200 },
+                { id: 5, delay: 3600 },
+                { id: 3, delay: 4000 },
+                { id: 2, delay: 4400 },
+                { id: 0, delay: 5000 }
+            ];
+
+            demoMelody.forEach(step => {
+                setTimeout(() => {
+                    playGong(step.id);
+                }, step.delay);
+            });
+        }
+    </script>
+</body>
+</html>
+        // --- 이어도사나 곡 자동 연주 ---
+        function playIeodoSana() {
+            initAudio();
+            
+            // 악보 기반 연주 시퀀스 (浹: 5, 汰: 3, 潢: 9, 南: 7)
+            const ieodoMelody = [
+                // 줄 1: 메기는 소리 (浹... 汰...)
+                { id: 5, delay: 0 },    // 浹 (이)
+                { id: 3, delay: 1200 }, // 汰 (아)
+                
+                // 줄 1: 받는 소리 (潢...)
+                { id: 9, delay: 2800 }, // 潢 (이)
+                
+                // 줄 2: 메기는 소리 (南...)
+                { id: 7, delay: 4800 }, // 南 (이)
+                
+                // 줄 2: 받는 소리 (南...)
+                { id: 7, delay: 6800 }  // 南 (이)
+            ];
+
+            ieodoMelody.forEach(step => {
+                setTimeout(() => {
+                    playGong(step.id);
+                }, step.delay);
+            });
+        }
+    </script>
+</body>
+</html>
