@@ -92,22 +92,6 @@
                     <button id="malletSoft" onclick="setMalletType('soft')" class="px-3 py-1 text-xs md:text-sm rounded-md text-stone-400 hover:text-white font-medium transition">부드러운 채 (지그시)</button>
                 </div>
             </div>
-
-            <!-- 미디 및 녹음/시범 연주 -->
-            <div class="flex items-center gap-2 flex-wrap">
-                <button id="recordBtn" onclick="toggleRecord()" class="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-red-900/50 border border-stone-700 text-stone-200 text-xs md:text-sm flex items-center gap-1.5 transition">
-                    <span id="recordDot" class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                    <span id="recordText">녹음 시작</span>
-                </button>
-                
-                <button id="playRecBtn" onclick="playRecord()" disabled class="px-3 py-1.5 rounded-lg bg-stone-800 border border-stone-700 text-stone-500 text-xs md:text-sm flex items-center gap-1.5 transition cursor-not-allowed">
-                    <i class="fa-solid fa-play text-xs"></i> 녹음 재생
-                </button>
-
-                <button onclick="playIeodoSana()" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs md:text-sm flex items-center gap-1.5 transition shadow-md">
-                    <i class="fa-solid fa-music"></i> 이어도사나 연주
-                </button>
-            </div>
         </div>
 
         <!-- 이어도사나 악보 가이드 세션 -->
@@ -390,14 +374,6 @@
                 // 파동 시각 효과 생성
                 createRipple(el);
             }
-
-            // 녹음 모드일 때 기록
-            if (isRecording) {
-                recordedNotes.push({
-                    id: id,
-                    time: Date.now() - recordStartTime
-                });
-            }
         }
 
         // 파동 이펙트
@@ -416,108 +392,6 @@
                 playGong(gongId);
             }
         });
-
-        // --- 녹음 & 재생 기능 ---
-        let isRecording = false;
-        let recordStartTime = 0;
-        let recordedNotes = [];
-
-        function toggleRecord() {
-            initAudio();
-            const recordBtn = document.getElementById('recordBtn');
-            const recordText = document.getElementById('recordText');
-            const recordDot = document.getElementById('recordDot');
-            const playRecBtn = document.getElementById('playRecBtn');
-
-            if (!isRecording) {
-                // 녹음 시작
-                isRecording = true;
-                recordedNotes = [];
-                recordStartTime = Date.now();
-                
-                recordText.innerText = "녹음 중지";
-                recordDot.classList.add('animate-ping');
-                playRecBtn.disabled = true;
-                playRecBtn.className = "px-3 py-1.5 rounded-lg bg-stone-800 border border-stone-700 text-stone-500 text-xs md:text-sm flex items-center gap-1.5 transition cursor-not-allowed";
-            } else {
-                // 녹음 중지
-                isRecording = false;
-                recordText.innerText = "녹음 시작";
-                recordDot.classList.remove('animate-ping');
-
-                if (recordedNotes.length > 0) {
-                    playRecBtn.disabled = false;
-                    playRecBtn.className = "px-3 py-1.5 rounded-lg bg-emerald-800/50 hover:bg-emerald-700/60 border border-emerald-600 text-emerald-200 text-xs md:text-sm flex items-center gap-1.5 transition cursor-pointer";
-                }
-            }
-        }
-
-        function playRecord() {
-            if (recordedNotes.length === 0) return;
-            initAudio();
-
-            recordedNotes.forEach(item => {
-                setTimeout(() => {
-                    playGong(item.id);
-                }, item.time);
-            });
-        }
-
-        // --- 시범 연주 (전통 가락 오마주) ---
-        function playDemo() {
-            initAudio();
-            
-            // 데모 멜로디 시퀀스 (노트 ID와 시차ms)
-            const demoMelody = [
-                { id: 0, delay: 0 },
-                { id: 2, delay: 400 },
-                { id: 3, delay: 800 },
-                { id: 5, delay: 1200 },
-                { id: 7, delay: 1600 },
-                { id: 7, delay: 2200 },
-                { id: 9, delay: 2800 },
-                { id: 7, delay: 3200 },
-                { id: 5, delay: 3600 },
-                { id: 3, delay: 4000 },
-                { id: 2, delay: 4400 },
-                { id: 0, delay: 5000 }
-            ];
-
-            demoMelody.forEach(step => {
-                setTimeout(() => {
-                    playGong(step.id);
-                }, step.delay);
-            });
-        }
-    </script>
-</body>
-</html>
-        // --- 이어도사나 곡 자동 연주 ---
-        function playIeodoSana() {
-            initAudio();
-            
-            // 악보 기반 연주 시퀀스 (浹: 5, 汰: 3, 潢: 9, 南: 7)
-            const ieodoMelody = [
-                // 줄 1: 메기는 소리 (浹... 汰...)
-                { id: 5, delay: 0 },    // 浹 (이)
-                { id: 3, delay: 1200 }, // 汰 (아)
-                
-                // 줄 1: 받는 소리 (潢...)
-                { id: 9, delay: 2800 }, // 潢 (이)
-                
-                // 줄 2: 메기는 소리 (南...)
-                { id: 7, delay: 4800 }, // 南 (이)
-                
-                // 줄 2: 받는 소리 (南...)
-                { id: 7, delay: 6800 }  // 南 (이)
-            ];
-
-            ieodoMelody.forEach(step => {
-                setTimeout(() => {
-                    playGong(step.id);
-                }, step.delay);
-            });
-        }
     </script>
 </body>
 </html>
